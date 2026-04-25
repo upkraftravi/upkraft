@@ -15,9 +15,13 @@ export async function GET(request: NextRequest) {
       const isTutorContext =
         refererPath.startsWith("/tutor") ||
         request.nextUrl?.pathname?.startsWith("/Api/tutor");
-      return (isTutorContext && request.cookies.get("impersonate_token")?.value)
-        ? request.cookies.get("impersonate_token")?.value
-        : request.cookies.get("token")?.value;
+      const impersonateToken = request.cookies.get("impersonate_token")?.value;
+      const authHeader = request.headers.get("Authorization") || "";
+      const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+
+      return (isTutorContext && impersonateToken)
+        ? impersonateToken
+        : (request.cookies.get("token")?.value || bearerToken || "");
     })();
 
     const decodedToken = token ? jwt.decode(token) : null;
@@ -159,6 +163,7 @@ export async function GET(request: NextRequest) {
       courses: user.courses,
       attendance: user.attendance,
       pendingAssignments: pendingMap.get(user._id.toString()) || 0,
+      pendingAssignmentCount: pendingMap.get(user._id.toString()) || 0,
     }));
 
     return NextResponse.json({
