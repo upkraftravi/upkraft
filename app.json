@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "49138fcb-7483-4721-bb42-8f0d31e7cbc7"
+      }
+    },
+    "android": {
+      "package": "com.vajravi.nextjs"
+    }
+  }
+}
