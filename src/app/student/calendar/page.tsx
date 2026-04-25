@@ -63,6 +63,13 @@ const STATUS_COLORS = {
     dot: "bg-blue-500",
     label: "Rescheduled",
   },
+  edited: {
+    bg: "bg-blue-50",
+    border: "border-blue-400",
+    text: "text-blue-700",
+    dot: "bg-blue-500",
+    label: "Edited",
+  },
   rescheduled_present: {
     bg: "bg-teal-50",
     border: "border-teal-400",
@@ -404,6 +411,8 @@ const StudentCalendarView = () => {
         return STATUS_COLORS.cancelled;
       case "rescheduled":
         return STATUS_COLORS.rescheduled;
+      case "edited":
+        return STATUS_COLORS.edited;
       case "rescheduled_present":
         return STATUS_COLORS.rescheduled_present;
       case "pending":
@@ -437,6 +446,10 @@ const StudentCalendarView = () => {
       if (classItem.feedbackId && attendanceStatus === "present") {
         return "rescheduled_present";
       }
+      return "rescheduled";
+    }
+
+    if (rawStatus === "edited") {
       return "rescheduled";
     }
 
@@ -676,9 +689,12 @@ const StudentCalendarView = () => {
                                      </div>
                                     <div className="text-[11px] text-gray-600 truncate">{formatTime(classItem.startTime, classItem.endTime)}</div>
 
-                                    {classItem.reasonForReschedule && classItem.status === "rescheduled" && (
+                                    {classItem.reasonForReschedule &&
+                                      (classItem.status === "rescheduled" ||
+                                        classItem.status === "edited") && (
                                       <div className="mt-1 text-[10px] text-yellow-700 bg-yellow-50 p-1 rounded">
-                                        <span className="font-semibold">Rescheduled:</span> {classItem.reasonForReschedule}
+                                        <span className="font-semibold">Rescheduled:</span>{" "}
+                                        {classItem.reasonForReschedule}
                                       </div>
                                     )}
 

@@ -180,9 +180,7 @@ const EditClassModal: React.FC<EditClassModalProps> = ({
       return "Date and times are required";
     if (form.endTime <= form.startTime)
       return "End time must be after start time";
-    const needsRescheduleReason = isRescheduleMode
-      ? hasAnythingChanged
-      : hasScheduleChanged;
+    const needsRescheduleReason = isRescheduleMode && hasAnythingChanged;
     if (needsRescheduleReason && !reasonForReschedule.trim())
       return "Please provide a reason for rescheduling";
     return "";
@@ -211,9 +209,14 @@ const EditClassModal: React.FC<EditClassModalProps> = ({
     const timezoneToSend =
       userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    const includeRescheduleReason = isRescheduleMode
+    const includeReason = isRescheduleMode && hasAnythingChanged;
+    const nextStatus = isRescheduleMode
       ? hasAnythingChanged
-      : hasScheduleChanged;
+        ? "rescheduled"
+        : undefined
+      : hasAnythingChanged
+        ? "scheduled"
+        : undefined;
 
     const payload = {
       title: form.title,
@@ -222,7 +225,9 @@ const EditClassModal: React.FC<EditClassModalProps> = ({
       startTime: form.startTime,
       endTime: form.endTime,
       timezone: timezoneToSend,
-      reasonForReschedule: includeRescheduleReason ? reasonForReschedule : "",
+      reasonForReschedule: includeReason ? reasonForReschedule : "",
+      updateIntent: isRescheduleMode ? "reschedule" : "edit",
+      status: nextStatus,
     };
 
     // Build ISO strings for UI state so calendar logic keeps working
@@ -253,9 +258,9 @@ const EditClassModal: React.FC<EditClassModalProps> = ({
         description: form.description,
         startTime: newStartIso,
         endTime: newEndIso,
-        ...(includeRescheduleReason && reasonForReschedule.trim()
+        ...(nextStatus ? { status: nextStatus } : {}),
+        ...(includeReason && reasonForReschedule.trim()
           ? {
-              status: "rescheduled",
               rescheduleReason: reasonForReschedule,
               reasonForReschedule: reasonForReschedule,
             }
@@ -298,11 +303,16 @@ const EditClassModal: React.FC<EditClassModalProps> = ({
   };
 
   const isSaveDisabled = !!validate() || isSaving;
+  const modalTitle = loading
+    ? "Loading..."
+    : isRescheduleMode
+      ? "Reschedule Class"
+      : "Edit Class";
 
   return (
     <Modal show={show} onHide={onHide} centered dialogClassName="max-w-md">
       <Modal.Header closeButton>
-        <Modal.Title>{loading ? "Loading..." : "Edit Class"}</Modal.Title>
+        <Modal.Title>{modalTitle}</Modal.Title>
       </Modal.Header>
 
       <Form onSubmit={(e) => submitWithType(e, "single")}>
@@ -365,7 +375,7 @@ const EditClassModal: React.FC<EditClassModalProps> = ({
             </div>
           </div>
 
-          {(isRescheduleMode ? hasAnythingChanged : hasScheduleChanged) && (
+          {isRescheduleMode && hasAnythingChanged && (
             <Form.Group className="mt-3">
               <Form.Label>
                 Reason for Reschedule <span className="text-red-500">*</span>
@@ -378,7 +388,7 @@ const EditClassModal: React.FC<EditClassModalProps> = ({
                 placeholder="Please provide a reason for rescheduling this class..."
               />
               <div className="text-xs text-gray-500 mt-1">
-                Students will be notified about this reschedule
+                Students will be notified about this change
               </div>
             </Form.Group>
           )}
@@ -394,7 +404,11 @@ const EditClassModal: React.FC<EditClassModalProps> = ({
             type="submit"
             variant="primary"
             disabled={isSaveDisabled}
-            title="Apply only to this occurrence"
+            title={
+              isRescheduleMode
+                ? "Reschedule only this occurrence"
+                : "Apply only to this occurrence"
+            }
           >
             {isSaving ? (
               <>
@@ -402,7 +416,7 @@ const EditClassModal: React.FC<EditClassModalProps> = ({
                 Saving...
               </>
             ) : (
-              "Save this event"
+              isRescheduleMode ? "save this event" : "Save"
             )}
           </Button>
           <Button
@@ -412,7 +426,9 @@ const EditClassModal: React.FC<EditClassModalProps> = ({
             onClick={(e) => submitWithType(e as any, "all")}
             title={
               hasRecurrence
-                ? "Apply to all events in this series"
+                ? isRescheduleMode
+                  ? "Reschedule all events in this series"
+                  : "Apply to all events in this series"
                 : "This event is not part of a series"
             }
           >
@@ -422,7 +438,9 @@ const EditClassModal: React.FC<EditClassModalProps> = ({
                 Saving...
               </>
             ) : (
-              "Save all in series"
+              isRescheduleMode
+                ? "save all in series"
+                : "Save all in series"
             )}
           </Button>
         </Modal.Footer>

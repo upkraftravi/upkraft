@@ -100,7 +100,7 @@ const ClassSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['scheduled', 'rescheduled', 'completed', 'canceled'],
+    enum: ['scheduled', 'edited', 'rescheduled', 'completed', 'canceled'],
     default: 'scheduled'
   },
   classType:{

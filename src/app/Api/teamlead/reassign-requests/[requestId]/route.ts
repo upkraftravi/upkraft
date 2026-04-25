@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connect } from "@/dbConnection/dbConfic";
 import ReassignRequest from "@/models/ReassignRequest";
+import CourseName from "@/models/courseName";
 import User from "@/models/userModel";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -79,18 +80,32 @@ export async function PUT(
                 newTutor.students.push(new mongoose.Types.ObjectId(studentId));
             }
 
-            // 3. Inherit courses: Add the assigned courses from old tutor to new tutor
-            const studentCourseIds = student.courses || [];
-            const oldTutorCourseIds = oldTutor.courses || [];
-            const commonCourseIds = studentCourseIds.filter((courseId: any) => 
-                oldTutorCourseIds.some((oldId: any) => oldId.toString() === courseId.toString())
-            );
-            
-            commonCourseIds.forEach((courseId: any) => {
-                if (!newTutor.courses.some((id: any) => id.toString() === courseId.toString())) {
-                    newTutor.courses.push(courseId);
-                }
-            });
+            // 3. Inherit courses + classes: Add the assigned courses (and their classes) from old tutor to new tutor
+const studentCourseIds = student.courses || [];
+const oldTutorCourseIds = oldTutor.courses || [];
+const commonCourseIds = studentCourseIds.filter((courseId: any) =>
+    oldTutorCourseIds.some((oldId: any) => oldId.toString() === courseId.toString())
+);
+
+// Fetch the common courses to get their associated classes
+
+const commonCourses = await (CourseName as any).find({ _id: { $in: commonCourseIds } }).select("class");
+commonCourseIds.forEach((courseId: any) => {
+    if (!newTutor.courses.some((id: any) => id.toString() === courseId.toString())) {
+        newTutor.courses.push(courseId);
+    }
+});
+
+// Add all classes from those courses to new tutor
+const newTutorClassSet = new Set((newTutor.classes || []).map((id: any) => id.toString()));
+for (const course of commonCourses) {
+    for (const classId of (course.class || [])) {
+        if (!newTutorClassSet.has(classId.toString())) {
+            newTutor.classes.push(classId);
+            newTutorClassSet.add(classId.toString());
+        }
+    }
+}
 
             await Promise.all([
                 student.save(),

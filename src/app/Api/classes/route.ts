@@ -477,9 +477,20 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, date, startTime, endTime, timezone, reasonForReschedule, joinLink } = body;
+    const {
+      title,
+      description,
+      date,
+      startTime,
+      endTime,
+      timezone,
+      reasonForReschedule,
+      joinLink,
+      status,
+      updateIntent,
+    } = body;
 
-    console.log("RECEIVED:", { title, description, date, startTime, endTime, timezone, reasonForReschedule, editType });
+    console.log("RECEIVED:", { title, description, date, startTime, endTime, timezone, reasonForReschedule, editType, status, updateIntent });
 
     if (!title || !description || !startTime || !endTime || (editType === "single" && !date)) {
       return NextResponse.json(
@@ -510,6 +521,11 @@ export async function PUT(request: NextRequest) {
       }
 
       const trimmedReason = (reasonForReschedule ?? '').toString().trim();
+      const normalizedIntent = (updateIntent ?? '').toString().trim().toLowerCase();
+      const normalizedStatus = (status ?? '').toString().trim().toLowerCase();
+      const isExplicitEdit = normalizedIntent === 'edit';
+      const isExplicitReschedule =
+        normalizedIntent === 'reschedule' || normalizedStatus === 'rescheduled';
 
       const ops = docs.map((doc) => {
         // Keep each class on its own date, only change time/title/description
@@ -534,9 +550,9 @@ export async function PUT(request: NextRequest) {
           ...(joinLink !== undefined && { joinLink: joinLink || null }),
         };
 
-        if (scheduleChangedForDoc || trimmedReason) {
+        if (trimmedReason || isExplicitEdit || isExplicitReschedule || scheduleChangedForDoc) {
           setPayload.reasonForReschedule = trimmedReason;
-          setPayload.status = 'rescheduled';
+          setPayload.status = isExplicitEdit ? 'scheduled' : 'rescheduled';
         }
 
         return {
@@ -594,9 +610,15 @@ export async function PUT(request: NextRequest) {
       ...(joinLink !== undefined && { joinLink: joinLink || null }),
     };
 
-    if (scheduleChanged || (reasonForReschedule && String(reasonForReschedule).trim())) {
+    const normalizedIntent = (updateIntent ?? '').toString().trim().toLowerCase();
+    const normalizedStatus = (status ?? '').toString().trim().toLowerCase();
+    const isExplicitEdit = normalizedIntent === 'edit';
+    const isExplicitReschedule =
+      normalizedIntent === 'reschedule' || normalizedStatus === 'rescheduled';
+
+    if ((reasonForReschedule && String(reasonForReschedule).trim()) || isExplicitEdit || isExplicitReschedule || scheduleChanged) {
       updatePayload.reasonForReschedule = reasonForReschedule;
-      updatePayload.status = 'rescheduled';
+      updatePayload.status = isExplicitEdit ? 'scheduled' : 'rescheduled';
     }
 
     const updatedClass = await Class.findByIdAndUpdate(
@@ -607,8 +629,20 @@ export async function PUT(request: NextRequest) {
 
     console.log("STORED SUCCESSFULLY IN UTC");
 
-    // Send reschedule emails to all enrolled students
+    // Send notifications only for actual reschedule updates.
     try {
+      if (updatePayload.status !== 'rescheduled') {
+        return NextResponse.json(
+          {
+            message: "Class updated successfully",
+            classData: updatedClass,
+            editType: 'single',
+            updatedCount: 1,
+          },
+          { status: 200 }
+        );
+      }
+
       // Find all users (students) who have this classId in their classes array
       const enrolledStudents = await User.find({
         classes: classId,

@@ -106,7 +106,14 @@ const STATUS_COLORS: Record<
     border: "border-blue-400",
     text: "text-blue-700",
     dot: "bg-blue-500",
-    label: "Rescheduled/Edited",
+    label: "Rescheduled",
+  },
+  edited: {
+    bg: "bg-blue-50",
+    border: "border-blue-400",
+    text: "text-blue-700",
+    dot: "bg-blue-500",
+    label: "Edited",
   },
   rescheduled_present: {
     bg: "bg-teal-50",
@@ -216,6 +223,8 @@ function getStatusColor(status: string) {
       return STATUS_COLORS.cancelled;
     case "rescheduled":
       return STATUS_COLORS.rescheduled;
+    case "edited":
+      return STATUS_COLORS.edited;
     case "rescheduled_present":
       return STATUS_COLORS.rescheduled_present;
     default:
@@ -524,6 +533,10 @@ const StudentCalendarView = () => {
         if (classItem.feedbackId && attendanceStatus === "present") {
           return "rescheduled_present";
         }
+        return "rescheduled";
+      }
+
+      if (rawStatus === "edited") {
         return "rescheduled";
       }
 
@@ -1580,7 +1593,9 @@ const StudentCalendarView = () => {
               </div>
             )}
 
-            {selectedClass?.reasonForReschedule && (
+            {selectedClass?.reasonForReschedule &&
+              (selectedClass.status === "rescheduled" ||
+                selectedClass.status === "edited") && (
               <div className="p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded-md">
                 <div className="flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
